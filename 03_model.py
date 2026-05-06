@@ -10,14 +10,12 @@ import logging
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Dropout
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
-from tensorflow.keras.optimizers import Adam
 
 # ─────────────────────────────────────────────
 # CONFIG
@@ -25,25 +23,23 @@ from tensorflow.keras.optimizers import Adam
 TARGET_COUNTRIES = ['HU', 'DE', 'FR', 'IT']
 
 MODEL_CONFIG = {
-    'lstm_units':    64,
-    'dense_units':   32,
-    'dropout_rate':  0.2,
-    'epochs':        100,
-    'batch_size':    32,
-    'patience':      10,
-    'loss':          'mae',
-    'optimizer':     'adam',
+    'lstm_units':   64,
+    'dense_units':  32,
+    'dropout_rate': 0.2,
+    'epochs':       100,
+    'batch_size':   32,
+    'patience':     10,
+    'loss':         'mae',
+    'optimizer':    'adam',
 }
 
 PATHS = {
-    'datasets':  'data/processed/datasets.npy',
-    'scalers':   'data/processed/scalers.pkl',
-    'models':    'models/',
-    'plots':     'plots/',
+    'datasets': 'data/processed/datasets.npy',
+    'scalers':  'data/processed/scalers.pkl',
+    'models':   'models/',
 }
 
-for path in PATHS.values():
-    os.makedirs(path, exist_ok=True)
+os.makedirs(PATHS['models'], exist_ok=True)
 
 # ─────────────────────────────────────────────
 # LOGGING
@@ -63,7 +59,7 @@ log = logging.getLogger(__name__)
 # 1. LOAD DATASETS
 # ─────────────────────────────────────────────
 def load_datasets(path: str) -> dict:
-    """Load preprocessed datasets and scalers from feature engineering step."""
+    """Load preprocessed X/y splits per country from feature engineering step."""
     datasets = np.load(path, allow_pickle=True).item()
     log.info(f"Datasets loaded from {path}")
     log.info(f"Available countries: {list(datasets.keys())}")
@@ -85,8 +81,10 @@ def build_lstm(input_shape: tuple, config: dict) -> tf.keras.Model:
     """
     Build LSTM model.
     Architecture:
-        LSTM(64) → Dropout(0.2) → Dense(64) → Dropout(0.2) → Dense(1)
-    No activation on output layer (regression task).
+        Input(lookback, n_features)
+        → LSTM(64) → Dropout(0.2)
+        → Dense(32) → Dropout(0.2)
+        → Dense(1)  [no activation — free regression output]
     """
     model = Sequential([
         LSTM(
@@ -120,7 +118,7 @@ def train_model(model: tf.keras.Model,
                 country_code: str) -> tf.keras.callbacks.History:
     """
     Train LSTM with EarlyStopping and ModelCheckpoint.
-    Validation data is monitored during training.
+    Validation data is monitored throughout training.
     """
     checkpoint_path = f"{PATHS['models']}{country_code}_best.keras"
 
@@ -158,46 +156,48 @@ def train_model(model: tf.keras.Model,
 # ─────────────────────────────────────────────
 # 4. EVALUATE MODEL
 # ─────────────────────────────────────────────
+def denormalize(y_scaled: np.ndarray, scaler) -> np.ndarray:
+    """
+    Inverse transform normalized values back to MW.
+    Scaler was fit on all feature columns — 'value' was the last column.
+    We build a dummy array to use inverse_transform correctly.
+    """
+    n_features = scaler.scale_.shape[0]
+    dummy = np.zeros((len(y_scaled), n_features))
+    dummy[:, -1] = y_scaled   # 'value' is the last column
+    return scaler.inverse_transform(dummy)[:, -1]
+
+
 def evaluate_model(model: tf.keras.Model,
                    splits: dict,
                    scaler,
                    country_code: str) -> dict:
     """
-    Evaluate on train / val / test sets.
-    Denormalize predictions back to MW for interpretable metrics.
-    Returns dict with MAE and RMSE per split.
+    Evaluate on train / val / test splits.
+    Denormalizes predictions to MW for interpretable MAE and RMSE.
+    Returns results dict with metrics and raw predictions per split.
     """
     results = {}
 
     for split_name in ['train', 'val', 'test']:
-        X = splits[f'X_{split_name}']
+        X             = splits[f'X_{split_name}']
         y_true_scaled = splits[f'y_{split_name}']
 
-        # Predict (normalized)
+        # Predict (normalized output)
         y_pred_scaled = model.predict(X, verbose=0).flatten()
 
-        # Denormalize: scale back to MW
-        # Scaler was fit on all FEATURE_COLS including 'value' as last column
-        # We need only the 'value' column inverse transform
-        n_features = scaler.scale_.shape[0]
-
-        # Build dummy arrays for inverse_transform (scaler expects all features)
-        def denormalize(y_scaled):
-            dummy = np.zeros((len(y_scaled), n_features))
-            dummy[:, -1] = y_scaled   # 'value' was last column
-            return scaler.inverse_transform(dummy)[:, -1]
-
-        y_true_mw = denormalize(y_true_scaled)
-        y_pred_mw = denormalize(y_pred_scaled)
+        # Denormalize both to MW
+        y_true_mw = denormalize(y_true_scaled, scaler)
+        y_pred_mw = denormalize(y_pred_scaled, scaler)
 
         mae  = mean_absolute_error(y_true_mw, y_pred_mw)
         rmse = np.sqrt(mean_squared_error(y_true_mw, y_pred_mw))
 
         results[split_name] = {
-            'mae':        mae,
-            'rmse':       rmse,
-            'y_true_mw':  y_true_mw,
-            'y_pred_mw':  y_pred_mw,
+            'mae':       mae,
+            'rmse':      rmse,
+            'y_true_mw': y_true_mw,
+            'y_pred_mw': y_pred_mw,
         }
 
         log.info(f"{country_code} | {split_name:5s} | MAE={mae:.1f} MW | RMSE={rmse:.1f} MW")
@@ -206,45 +206,27 @@ def evaluate_model(model: tf.keras.Model,
 
 
 # ─────────────────────────────────────────────
-# 5. VISUALIZE: PREDICTION VS ACTUAL
-# ─────────────────────────────────────────────
-def plot_prediction(results: dict, country_code: str, n_hours: int = 200) -> None:
-    """Plot actual vs predicted load (MW) on test set."""
-    y_true = results['test']['y_true_mw'][:n_hours]
-    y_pred = results['test']['y_pred_mw'][:n_hours]
-
-    plt.figure(figsize=(14, 5))
-    plt.plot(y_true, label='Actual',    linewidth=2, alpha=0.9)
-    plt.plot(y_pred, label='Predicted', linewidth=2, alpha=0.8, linestyle='--')
-
-    plt.title(f'{country_code}: Prediction vs. Actual (first {n_hours} hours of test set)', fontsize=14)
-    plt.xlabel('Hour')
-    plt.ylabel('Load (MW)')
-    plt.legend(fontsize=12)
-    plt.grid(alpha=0.3)
-    plt.tight_layout()
-
-    plot_path = f"{PATHS['plots']}{country_code}_prediction.png"
-    plt.savefig(plot_path, dpi=150)
-    plt.show()
-    log.info(f"{country_code} | Plot saved → {plot_path}")
-
-
-# ─────────────────────────────────────────────
-# 6. SAVE MODEL & HISTORY
+# 5. SAVE MODEL & HISTORY
 # ─────────────────────────────────────────────
 def save_outputs(model: tf.keras.Model,
                  history: tf.keras.callbacks.History,
+                 results: dict,
                  country_code: str) -> None:
-    """Save trained model weights and training history."""
+    """
+    Save trained model, training history, and evaluation results.
+    Results are saved so 04_visualize.py can load them without re-running training.
+    """
     model_path   = f"{PATHS['models']}{country_code}_lstm.keras"
     history_path = f"{PATHS['models']}{country_code}_history.npy"
+    results_path = f"{PATHS['models']}{country_code}_results.npy"
 
     model.save(model_path)
     np.save(history_path, history.history)
+    np.save(results_path, results)
 
     log.info(f"{country_code} | Model saved   → {model_path}")
     log.info(f"{country_code} | History saved → {history_path}")
+    log.info(f"{country_code} | Results saved → {results_path}")
 
 
 # ─────────────────────────────────────────────
@@ -287,29 +269,26 @@ def main():
         # 3. Evaluate
         results = evaluate_model(model, splits, scalers[cc], cc)
 
-        # 4. Visualize
-        plot_prediction(results, cc)
+        # 4. Save (no visualization here — see 04_visualize.py)
+        save_outputs(model, history, results, cc)
 
-        # 5. Save
-        save_outputs(model, history, cc)
-
-        # 6. Summary
+        # 5. Summary row
         summary.append({
-            'country':   cc,
-            'test_mae':  results['test']['mae'],
-            'test_rmse': results['test']['rmse'],
-            'epochs_run': len(history.history['loss']),
+            'country':       cc,
+            'test_mae':      results['test']['mae'],
+            'test_rmse':     results['test']['rmse'],
+            'epochs_run':    len(history.history['loss']),
             'best_val_loss': min(history.history['val_loss']),
         })
 
-    # Print final summary table
+    # Save final summary table
     log.info("\n" + "=" * 50)
     log.info("FINAL SUMMARY")
     log.info("=" * 50)
     df_summary = pd.DataFrame(summary).set_index('country')
     log.info(f"\n{df_summary.round(2).to_string()}")
     df_summary.to_csv(f"{PATHS['models']}summary.csv")
-    log.info(f"\nSummary saved → {PATHS['models']}summary.csv")
+    log.info(f"Summary saved → {PATHS['models']}summary.csv")
 
 
 if __name__ == "__main__":

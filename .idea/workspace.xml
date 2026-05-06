@@ -2,9 +2,10 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="9ffea5c2-0b19-469a-9a1c-8e7f5900b93b" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/Energy.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/Energy.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/03_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/03_model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/notebooks/01_eda.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/notebooks/01_eda.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/notebooks/02_feature_engineering.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/notebooks/02_feature_engineering.ipynb" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -33,6 +34,8 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.03_model.executor": "Run",
+    "Python.04_visualize.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
     "RunOnceActivity.git.unshallow": "true",
