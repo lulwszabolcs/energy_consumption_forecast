@@ -15,8 +15,19 @@ End-to-end time series forecasting project for hourly electricity consumption pr
 | **Matplotlib** | Visualization (Prediction vs. Actual plots) |
 | **Streamlit** | Interactive demo application |
 
+## 📊 Example Output
 
-## 🔢 Running Order
+After running `04_visualize.py`, timestamped plots are saved under `plots/`:
+
+**Hungary (HU) — Prediction vs. Actual (first 200 hours of test set)**
+
+![HU Prediction](plots/20260507_000624/HU_prediction.png)
+
+The blue line shows actual electricity consumption (MW), the dashed line shows the LSTM's forecast. The model captures daily peaks and troughs closely.
+
+---
+
+## 🔢 Running
 
 Run the project in the following order:
 
@@ -42,18 +53,6 @@ python 04_visualize.py
 # Step 5
 streamlit run 05_app.py
 ```
-
----
-
-## 📊 Example Output
-
-After running `04_visualize.py`, timestamped plots are saved under `plots/`:
-
-**Hungary (HU) — Prediction vs. Actual (first 200 hours of test set)**
-
-![HU Prediction](plots/20260507_000624/HU_prediction.png)
-
-The blue line shows actual electricity consumption (MW), the dashed line shows the LSTM's forecast. The model captures daily peaks and troughs closely.
 
 ---
 
