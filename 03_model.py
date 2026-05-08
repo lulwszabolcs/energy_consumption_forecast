@@ -86,11 +86,12 @@ def build_lstm(input_shape: tuple, config: dict) -> tf.keras.Model:
         → Dense(32) → Dropout(0.2)
         → Dense(1)  [no activation — free regression output]
     """
+
+    "Group of layers into a model using Sequential"
     model = Sequential([
         LSTM(
             config['lstm_units'],
-            input_shape=input_shape,
-            return_sequences=False
+            input_shape=input_shape
         ),
         Dropout(config['dropout_rate']),
 
@@ -163,7 +164,7 @@ def denormalize(y_scaled: np.ndarray, scaler) -> np.ndarray:
     We build a dummy array to use inverse_transform correctly.
     """
     n_features = scaler.scale_.shape[0]
-    dummy = np.zeros((len(y_scaled), n_features))
+    dummy = np.zeros((len(y_scaled), n_features)) # dummy arrays with zeros to use inverse_transform correctly
     dummy[:, -1] = y_scaled   # 'value' is the last column
     return scaler.inverse_transform(dummy)[:, -1]
 
