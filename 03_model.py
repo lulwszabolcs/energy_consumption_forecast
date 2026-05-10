@@ -48,7 +48,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s | %(levelname)s | %(message)s',
     handlers=[
-        logging.FileHandler('models/training.log'),
+        logging.FileHandler('models/training.log', encoding='utf-8'),
         logging.StreamHandler()
     ]
 )
@@ -79,15 +79,14 @@ def load_scalers(path: str) -> dict:
 # ─────────────────────────────────────────────
 def build_lstm(input_shape: tuple, config: dict) -> tf.keras.Model:
     """
-    Build LSTM model.
+    Build LSTM model for Direct Forecasting.
     Architecture:
         Input(lookback, n_features)
         → LSTM(64) → Dropout(0.2)
         → Dense(32) → Dropout(0.2)
-        → Dense(1)  [no activation — free regression output]
+        → Dense(24)  [multi-output: predicts next 24 hours at once]
     """
 
-    "Group of layers into a model using Sequential"
     model = Sequential([
         LSTM(
             config['lstm_units'],
@@ -98,7 +97,7 @@ def build_lstm(input_shape: tuple, config: dict) -> tf.keras.Model:
         Dense(config['dense_units']),
         Dropout(config['dropout_rate']),
 
-        Dense(1)   # No activation — free regression output
+        Dense(24)   # Predict next 24 hours
     ])
 
     model.compile(
@@ -160,13 +159,19 @@ def train_model(model: tf.keras.Model,
 def denormalize(y_scaled: np.ndarray, scaler) -> np.ndarray:
     """
     Inverse transform normalized values back to MW.
-    Scaler was fit on all feature columns — 'value' was the last column.
-    We build a dummy array to use inverse_transform correctly.
+    Supports both 1D and 2D input arrays (N, horizon).
     """
     n_features = scaler.scale_.shape[0]
-    dummy = np.zeros((len(y_scaled), n_features)) # dummy arrays with zeros to use inverse_transform correctly
-    dummy[:, -1] = y_scaled   # 'value' is the last column
-    return scaler.inverse_transform(dummy)[:, -1]
+    
+    # Flatten if 2D to reuse scaling logic efficiently
+    original_shape = y_scaled.shape
+    y_flat = y_scaled.flatten()
+    
+    dummy = np.zeros((len(y_flat), n_features))
+    dummy[:, -1] = y_flat   # 'value' is the last column
+    
+    denorm_flat = scaler.inverse_transform(dummy)[:, -1]
+    return denorm_flat.reshape(original_shape)
 
 
 def evaluate_model(model: tf.keras.Model,
@@ -176,7 +181,7 @@ def evaluate_model(model: tf.keras.Model,
     """
     Evaluate on train / val / test splits.
     Denormalizes predictions to MW for interpretable MAE and RMSE.
-    Returns results dict with metrics and raw predictions per split.
+    Computes global metrics across all forecast steps.
     """
     results = {}
 
@@ -184,15 +189,16 @@ def evaluate_model(model: tf.keras.Model,
         X             = splits[f'X_{split_name}']
         y_true_scaled = splits[f'y_{split_name}']
 
-        # Predict (normalized output)
-        y_pred_scaled = model.predict(X, verbose=0).flatten()
+        # Predict (normalized output shape: (N, 24))
+        y_pred_scaled = model.predict(X, verbose=0)
 
         # Denormalize both to MW
         y_true_mw = denormalize(y_true_scaled, scaler)
         y_pred_mw = denormalize(y_pred_scaled, scaler)
 
-        mae  = mean_absolute_error(y_true_mw, y_pred_mw)
-        rmse = np.sqrt(mean_squared_error(y_true_mw, y_pred_mw))
+        # Metrics calculated across all steps and samples
+        mae  = mean_absolute_error(y_true_mw.flatten(), y_pred_mw.flatten())
+        rmse = np.sqrt(mean_squared_error(y_true_mw.flatten(), y_pred_mw.flatten()))
 
         results[split_name] = {
             'mae':       mae,
@@ -204,6 +210,7 @@ def evaluate_model(model: tf.keras.Model,
         log.info(f"{country_code} | {split_name:5s} | MAE={mae:.1f} MW | RMSE={rmse:.1f} MW")
 
     return results
+
 
 
 # ─────────────────────────────────────────────

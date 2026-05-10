@@ -51,10 +51,13 @@ def plot_prediction_vs_actual(results: dict,
                                n_hours: int = N_HOURS) -> None:
     """
     Plot actual vs predicted load (MW) on test set.
+    Uses the first step of each 24h forecast window for comparison.
     Saves PNG to timestamped run directory.
     """
-    y_true = results['test']['y_true_mw'][:n_hours]
-    y_pred = results['test']['y_pred_mw'][:n_hours]
+    # y_true/y_pred now have shape (N, 24)
+    # We take the first predicted hour of each window for a continuous 1-step plot
+    y_true = results['test']['y_true_mw'][:n_hours, 0]
+    y_pred = results['test']['y_pred_mw'][:n_hours, 0]
 
     plt.figure(figsize=(14, 5))
     plt.plot(y_true, label='Actual',    linewidth=2, alpha=0.9)
