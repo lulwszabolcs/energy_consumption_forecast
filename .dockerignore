@@ -1,0 +1,24 @@
+# Build and Environment
+.venv
+__pycache__
+.git
+.idea
+.vscode
+*.pyc
+*.pyo
+*.pyd
+
+# Data and Models (Optional: exclude if you prefer mounting them via volumes)
+# data/raw
+# data/external
+
+# Development Files (Excluded as per your request)
+03_model.py
+04_visualize.py
+notebooks/
+docs/
+plots/
+
+# Misc
+README.md
+.gitignore

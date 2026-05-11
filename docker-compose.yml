@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  energy-app:
+    build: .
+    container_name: energy_forecasting_app
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./models:/app/models
+      - ./data/processed:/app/data/processed
+    restart: unless-stopped
+    environment:
+      - STREAMLIT_THEME_BASE=dark
+      - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false

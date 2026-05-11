@@ -1,6 +1,6 @@
 # ⚡️️Short-term Electricity Load Forecasting for European Countries
 
-End-to-end time series forecasting project for hourly electricity consumption prediction. The model forecasts short-term load (1 hour ahead) for four European countries: Hungary, Germany, France, and Italy using LSTM neural networks.
+End-to-end time series forecasting project for hourly electricity consumption prediction. The model forecasts short-term load (24 hours ahead) for four European countries: Hungary, Germany, France, and Italy using LSTM neural networks.
 
 ---
 
