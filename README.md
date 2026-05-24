@@ -1,6 +1,6 @@
 # ⚡️️Short-term Electricity Load Forecasting for European Countries
 
-End-to-end time series forecasting project for hourly electricity consumption prediction. The model forecasts short-term load (24 hours ahead) for four European countries: Hungary, Germany, France, and Italy using LSTM neural networks.
+End-to-end time series forecasting project for hourly electricity consumption prediction. The model forecasts short-term load (24 hour ahead) for four European countries: Hungary, Germany, France, and Italy using LSTM neural networks.
 
 ---
 
@@ -53,6 +53,18 @@ python 04_visualize.py
 # Step 5
 streamlit run 05_app.py
 ```
+
+### 🐳 Running with Docker (Recommended)
+
+To run the Streamlit app in a containerized environment:
+
+1. **Build and start:**
+   ```bash
+   docker-compose up --build
+   ```
+2. **Access the app:** Open [http://localhost:8501](http://localhost:8501) in your browser.
+
+*Note: The `models/` and `data/processed/` directories are mounted as volumes, so any updates made to models on your host machine are immediately reflected in the app.*
 
 ---
 
