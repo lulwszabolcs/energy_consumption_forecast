@@ -17,13 +17,18 @@ End-to-end time series forecasting project for hourly electricity consumption pr
 
 ## 📊 Example Output
 
-After running `04_visualize.py`, timestamped plots are saved under `plots/`:
+**Hungary (HU) — Prediction vs. Actual**
 
-**Hungary (HU) — Prediction vs. Actual (first 200 hours of test set)**
+![HU Prediction](docs/img/preview_act_vs_test.png)
 
-![HU Prediction](plots/20260507_000624/HU_prediction.png)
+The model captures daily peaks and troughs closely.
 
-The blue line shows actual electricity consumption (MW), the dashed line shows the LSTM's forecast. The model captures daily peaks and troughs closely.
+---
+**Hungary (HU) — Run a forecast**
+
+![HU Forecast](docs/img/preview_forecast.png)
+
+The blue line shows actual electricity consumption (MW), the dashed line shows the LSTM's forecast. 
 
 ---
 
